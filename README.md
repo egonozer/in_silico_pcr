@@ -52,6 +52,8 @@ ATGACATAAGA	TACTACTGAA	primer_set_1
 GATATACTGAG	CTAGACTACT	dnaA
 ```
 
+Primer sequences containing [IUPAC ambiguity codes](https://www.bioinformatics.org/sms/iupac.html) are accepted.
+
 ### 4.2 Optional Inputs:
 
 * `-l`  
