@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 #in_silico_pcr.pl
-#Copyright (C) 2017  Egon A. Ozer
+#Copyright (C) 2017-2019 Egon A. Ozer
 #
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -16,7 +16,10 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see [http://www.gnu.org/licenses/].
 
-my $version = "0.4";
+my $version = "0.5";
+
+## changes from v0.4
+## fixed bug where if amplicons started at the same position on multiple different contigs, only one would be reported
 
 ## changes from v0.3
 ## can take a list of primer sequences. This can save time on repeatedly reading the sequence file.
@@ -211,45 +214,47 @@ foreach my $slice (@prims){
     ## PRINT RESULTS
     if (scalar keys %results_hash > 0){
         my $count = 0;
-        foreach my $key (sort {$a<=>$b} keys %results_hash){
-            $count++;
-            my ($val, $id, $rc) = @{$results_hash{$key}};
-            my $sequence = $sequences{$id};
-            my $amp = substr($sequence, $key, $val);
-            if ($opt_i){
-                #check to make sure that an extra base wasn't added to the end of the sequence due to an indel pattern
-                my @check = split(/($start_pattern)/, $amp);
-                if (length($check[0]) == 1){
-                    $amp = substr($amp, 1);
-                    $val--;
-                    $key++;
-                } elsif (length($check[$#check]) == 1){
-                    $amp = substr($amp, 0, length($amp) - 1);
-                    $val--;
+        foreach my $id (sort {$a cmp $b} keys %results_hash){
+            foreach my $key (sort {$a<=>$b} keys %{$results_hash{$id}}){
+                $count++;
+                my ($val, $rc) = @{$results_hash{$id}{$key}};
+                my $sequence = $sequences{$id};
+                my $amp = substr($sequence, $key, $val);
+                if ($opt_i){
+                    #check to make sure that an extra base wasn't added to the end of the sequence due to an indel pattern
+                    my @check = split(/($start_pattern)/, $amp);
+                    if (length($check[0]) == 1){
+                        $amp = substr($amp, 1);
+                        $val--;
+                        $key++;
+                    } elsif (length($check[$#check]) == 1){
+                        $amp = substr($amp, 0, length($amp) - 1);
+                        $val--;
+                    }
+                    my @check2 = split(/$end_pattern/, $amp);
+                    if (length($check2[0]) == 1){
+                        $amp = substr($amp, 1);
+                        $val--;
+                        $key++;
+                    } elsif (length($check2[$#check2]) == 1){
+                        $amp = substr($amp, 0, length($amp) - 1);
+                        $val--;
+                    }
                 }
-                my @check2 = split(/$end_pattern/, $amp);
-                if (length($check2[0]) == 1){
-                    $amp = substr($amp, 1);
-                    $val--;
-                    $key++;
-                } elsif (length($check2[$#check2]) == 1){
-                    $amp = substr($amp, 0, length($amp) - 1);
-                    $val--;
+                my $ampID;
+                $ampID = "$pref\_" if $pref;
+                $ampID .= "amp_$count";
+                print "$ampID\t$id\t". ($key + 1) ."\t$val";
+                if ($opt_r){
+                    print "\tcomplement" if $rc eq "y";
                 }
+                print "\n";
+                if ($opt_r and $rc eq "y"){
+                    $amp = reverse($amp);
+                    $amp =~ tr/ACTGRYKMBVDHactgrykmbvdh/TGACYRMKVBHDtgacyrmkvbhd/;
+                }
+                print STDERR ">$ampID\n$amp\n";
             }
-            my $ampID;
-            $ampID = "$pref\_" if $pref;
-            $ampID .= "amp_$count";
-            print "$ampID\t$id\t". ($key + 1) ."\t$val";
-            if ($opt_r){
-                print "\tcomplement" if $rc eq "y";
-            }
-            print "\n";
-            if ($opt_r and $rc eq "y"){
-                $amp = reverse($amp);
-                $amp =~ tr/ACTGRYKMBVDHactgrykmbvdh/TGACYRMKVBHDtgacyrmkvbhd/;
-            }
-            print STDERR ">$ampID\n$amp\n";
         } 
     } else {
         if ($opt_c){
@@ -344,10 +349,8 @@ sub Amplify {
     
     foreach my $id (sort keys %sequences){
         my $sequence = $sequences{$id};
-        #print STDERR "\tsequence: $sequence\n";
         my @fragments = split(/($start_pattern)/, $sequence);
         my $maxfragments = scalar @fragments;
-        #print STDERR "\tmaxfragments: $maxfragments\n";
         my $position = length($fragments[0]);
         if ($maxfragments > 1){
             for (my $m = 1; $m < $maxfragments ; $m+= 2){
@@ -364,11 +367,11 @@ sub Amplify {
                         }
                     }
                     if (!$opt_e){
-                        $results_hash{$position} = ([$lenfragment, $id, $rc]);
+                        $results_hash{$id}{$position} = ([$lenfragment, $rc]);
                     } else {
                         my $new_pos = $position + length $fragments[$m];
                         my $new_len = length $fragments2[0];
-                        $results_hash{$new_pos} = ([$new_len, $id, $rc]);
+                        $results_hash{$id}{$new_pos} = ([$new_len, $rc]);
                     }
                 }
                 $position += length($fragments[$m]) + length($fragments[$m+1]);
