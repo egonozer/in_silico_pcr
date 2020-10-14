@@ -16,7 +16,11 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see [http://www.gnu.org/licenses/].
 
-my $version = "0.5";
+my $version = "0.5.1";
+
+## changes from v0.5
+## fix bug resulting in an error when forward primer sequence was found at the end of the input sequence. This only resulted in an error when -c was not given.
+## include bzip2 support
 
 ## changes from v0.4
 ## fixed bug where if amplicons started at the same position on multiple different contigs, only one would be reported
@@ -37,13 +41,14 @@ use warnings;
 
 ## Usage
 my $usage = "
-in_silico_PCR.pl
+in_silico_PCR.pl (version $version)
 
 Adapted from Joseba Bikandi's php script
 (http://www.biophp.org/minitools/pcr_amplification/)
 
 Required:
-  -s <string>   Sequence file in fasta format (can be gzipped, must have .gz suffix)
+  -s <string>   Sequence file in fasta format
+                (can be gzipped or bzipped, must have .gz or .bz2 suffix)
   
 Options:
   -a <string>   Forward primer
@@ -91,6 +96,8 @@ my $maxlength   = $opt_l ? $opt_l : 3000;
 my $in;
 if ($seqfile =~ m/\.gz$/){
     open ($in, "gzip -cd '$seqfile' |") or die "Can't open $seqfile: $!\n";
+} elsif ($seqfile =~ m/\.bz2$/){
+    open ($in, "bzip2 -cdk '$seqfile' |") or die "Can't open $seqfile: $!\n";
 } else {
     open ($in, "<", $seqfile) or die "Can't open $seqfile\n";
 }
@@ -354,6 +361,7 @@ sub Amplify {
         my $position = length($fragments[0]);
         if ($maxfragments > 1){
             for (my $m = 1; $m < $maxfragments ; $m+= 2){
+                next unless $fragments[$m + 1];
                 my $subfragment_to_maximum = substr($fragments[$m + 1], 0, $maxlength);
                 my @fragments2 = split(/($end_pattern)/, $subfragment_to_maximum);
                 
