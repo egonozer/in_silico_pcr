@@ -13,7 +13,7 @@
 ***
 ## 1. INTRODUCTION
 
-This script searches nucleotide sequences using a set of primer sequences and attempts to anticipate the results of a PCR reaction using these same sequences. Results are based on sequence identity. Real-world factors such as melting temperature, annealing time, salt concentration, or secondary structure are not accounted for in this script.
+This script searches nucleotide sequences using a set of primer sequences and attempts to anticipate the results of a PCR reaction using these same sequences. All potentially amplified sequences based on amplicon size and primer mismatch / indel limits that are foudn in the query sequence will be output. Results are based on sequence identity. Real-world factors such as melting temperature, annealing time, salt concentration, or secondary structure are not accounted for in this script.
 
 This program was adapted and extended from a php script ([link](http://www.biophp.org/minitools/pcr_amplification/)) authored by Joseba Bikandi which was covered by the [GNU GPL v2](http://www.biophp.org/minitools/pcr_amplification/) license. 
 
@@ -26,7 +26,7 @@ Perl
 Download and save.
 
 ## 4. USAGE
-Basic command: `perl in_silico_PCR.pl -s query.fasta -a (forward primer sequence) -b (reverse primer sequence) > results.txt 2> amplicons.fasta`
+Basic command: `perl in_silico_PCR.pl -s query.fasta -a (forward primer sequence) -b (reverse primer sequence) -f amplicons.fasta > results.txt`
 
 For list of options, call the script without any inputs: `perl in_silico_PCR.pl`
 
@@ -52,16 +52,20 @@ ATGACATAAGA	TACTACTGAA	primer_set_1
 GATATACTGAG	CTAGACTACT	dnaA
 ```
 
-Primer sequences containing [IUPAC ambiguity codes](https://www.bioinformatics.org/sms/iupac.html) are accepted.
+Primer sequences containing inosine [I] or [IUPAC ambiguity codes](https://www.bioinformatics.org/sms/iupac.html) are accepted.
 
 ### 4.2 Optional Inputs:
+
+* `-f`
+Filename to output amplicon sequences
+(default: amplicon sequences are output to STDERR)
 
 * `-l`  
 Maximum "amplicon" length, in bp.  
 (default: 3000)
 
 * `-m`  
-Allow up to one base mismatch per primer sequence.  
+Number of mismatches per primer sequence to allow 
 (default: no mismatches tolerated)
 
 * `-i`  
@@ -82,20 +86,24 @@ If no amplicons are found in the sequence, will instead output and and all prime
 
 ## 5. OUTPUT
 
-A summary of each _in silico_ "PCR" reaction result will be output to STDOUT. The output can be directed to a file instead of the screen by using `> results_file.txt` on the command line. There are four columns in the results:
+A summary of each _in silico_ "PCR" reaction result will be output to STDOUT. The output can be directed to a file instead of the screen by using `> results_file.txt` on the command line. There are eight columns in the results:
 
 1. "AmpID": Name of the amplicon. It will include the name of the primer set (third column in the file given to `-p`) followed by "amp" for full amplicon (both primers in correct orientation within maximum distance), followed by a number to represent the number of amplicons found in the the input sequence. If the `-c` option is given above, then if one or both primer sequences is found in the input sequence, but not in the correct orientation or within the maximum amplicon size, then the prefix will be followed by "p1" to represent the first primer sequence or "p2" to represent the second primer sequence.
 2. "SequenceId": The name of the input sequence in which the primer sequences were found. Will be "No amplification" if no amplicon was identified.
 3. "Position in sequence": The 5'-most position (1-based) at which the amplicon or primer sequence starts in the input sequence. This value will vary depending on whether `-e` is given or not (see Options above)
 4. "Length": The total length of the amplified sequence. This value will vary depending on whether `-e` is given or not (see Options above)
+5. "P1Mismatch": Number of base mismatches between the reference sequence and the forward (P1) primer sequence
+6. "P1Indel": Number of insertions or deletions between the reference sequence and the forward (P1) primer sequence
+7. "P2Mismatch": Number of base mismatches between the reference sequence and the reverse (P2) primer sequence
+68. "P2Indel": Number of insertions or deletions between the reference sequence and the reverse (P2) primer sequence
 
-"Amplicon" sequences in fasta format will be output to STDERR. The output can be directed to a file instead of the screen by using `2> amplicons.fasta` on the command line.  
+"Amplicon" sequences in fasta format will be output by default to STDERR or to a file name given to `-f`.   
 
 
 ## 6. LICENSE:
 
 in\_silico_pcr  
-Copyright (C) 2017 Egon A. Ozer
+Copyright (C) 2017-2025 Egon A. Ozer
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -114,7 +122,4 @@ along with this program.  See LICENSE.txt
 
 Contact [Egon Ozer](e-ozer@northwestern.edu) with questions or comments.
 
-
-
-> Written with [MacDown](https://macdown.uranusjr.com/).
  
